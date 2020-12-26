@@ -1,26 +1,64 @@
-import { CATEGORIES, LETTERS } from '../constants';
+import { Socket } from 'socket.io';
+
+import { CATEGORIES, LETTERS, TIME } from '../constants';
 import Room from './room';
-import randomInt from '../utils/randomInteger';
 //import randomArrItem from '../utils/randomArrayItem';
+import randomWithExclude from '../utils/randomWithExclude';
 
+interface Rooms {
+  [id: number]: Room;
+}
 export default class Lobby {
-  rooms: Room[];
-  max_rooms = 100;
+  private rooms: Rooms;
+  private max_rooms: number;
 
-  constructor(max_rooms: number) {
-    this.rooms = [];
+  constructor(max_rooms: number = 50) {
+    this.rooms = {};
     this.max_rooms = max_rooms;
   }
 
-  unavailableRoomsID() {
-    const unavailable_ids = this.rooms.map((room) => {
-      return room.id;
-    });
-    return unavailable_ids;
+  public getRoom(id: number): Room {
+    return this.rooms[id];
   }
 
-  getAvaliableRooms() {
-    const avaliable_rooms = this.rooms.map((room) => {
+  public getAllRooms(): Rooms {
+    return this.rooms;
+  }
+
+  private usedRoomsID(): number[] {
+    const used_ids = Object.keys(this.rooms).map((id) => parseInt(id));
+    return used_ids;
+  }
+
+  public createRoom(
+    max_rounds: number = 8,
+    max_players: number = 10,
+    timer: number = TIME.medium,
+    password: string = '',
+    categories: string[] = CATEGORIES,
+    letters: string[] = LETTERS
+  ): number {
+    if (Object.keys(this.rooms).length === this.max_rooms) {
+      return null;
+    }
+
+    const id = randomWithExclude(0, this.max_rooms, this.usedRoomsID());
+
+    this.rooms[id] = new Room(
+      id,
+      max_rounds,
+      max_players,
+      timer,
+      password,
+      categories,
+      letters
+    );
+    console.log(`> Created room: ${id}`);
+    return id;
+  }
+
+  private getAvaliableRooms(): Rooms {
+    const avaliable_rooms = Object.values(this.rooms).map((room: Room) => {
       if (room.available()) {
         return room;
       }
@@ -28,32 +66,30 @@ export default class Lobby {
     return avaliable_rooms;
   }
 
-  createRoom(
-    letters: string[],
-    categories: string[],
-    total_rounds: number,
-    max_players: number
-  ) {
-    if (this.rooms.length === this.max_rooms) {
-      return 0;
+  public directEnterRoom(
+    socket: Socket,
+    room_id: number,
+    username: string
+  ): void {
+    if (this.rooms[room_id]) {
+      this.rooms[room_id].addPlayer(socket, username);
     }
-
-    const avaliable_id = 1;
-    const new_room = new Room(
-      avaliable_id,
-      letters,
-      categories,
-      total_rounds,
-      max_players
-    );
-    this.rooms.push(new_room);
-    console.log(`> Created room: ${avaliable_id}`);
   }
 
-  findRoom() {
+  public findSuitableRooms(): Rooms {
     const avaliable_rooms = this.getAvaliableRooms();
-    console.log(avaliable_rooms);
+    const sorted_rooms = Object.values(avaliable_rooms).sort(
+      (a, b) => a.getInfo().players - b.getInfo().players
+    );
+    return sorted_rooms;
   }
 
-  init() {}
+  public quickJoin(socket: Socket, username: string): void {
+    const suitable_rooms = this.findSuitableRooms();
+    this.directEnterRoom(socket, suitable_rooms[0].id, username);
+  }
+
+  public init(): void {
+    this.createRoom();
+  }
 }

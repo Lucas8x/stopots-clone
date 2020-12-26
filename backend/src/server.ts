@@ -1,38 +1,64 @@
 import express from 'express';
 import http from 'http';
-import { Socket } from 'socket.io';
+import { Socket, listen } from 'socket.io';
 
 import Lobby from './controllers/lobby';
-import Room from './controllers/room';
 
 const PORT = process.env.PORT || 3333;
 const app = express();
 const server = http.createServer(app);
-const io = require('socket.io')(server);
+const io = listen(server);
 
-//const lobby = new Lobby(50);
-const test_room = new Room(1);
+const lobby = new Lobby(50);
+lobby.init();
 
 io.on('connection', (socket: Socket) => {
   console.log(`> New Connection: ${socket.id}`);
 
   socket.on('enter_game', ({ username }) => {
-    if (!test_room.available()) return;
     console.log(`> Connecting: ${username} to a room...`);
-    test_room.addPlayer(socket, username);
+    lobby.quickJoin(socket, username);
+  });
+
+  socket.on('enter_with_id', ({ room_id, username }) => {
+    lobby.directEnterRoom(socket, room_id, username);
   });
 
   socket.on('disconnect', () => {
     console.log(`> Disconnection: ${socket.id}`);
-    test_room.removePlayer(socket);
+    lobby.getRoom(socket['current_room_id']).removePlayer(socket);
   });
 
   socket.on('chat_message', (message: string) => {
-    if (message.length > 50) return;
-    test_room.sendMessage(message);
+    lobby.getRoom(socket['current_room_id']).sendMessage(message);
   });
 
-  socket.on('stop', () => {});
+  socket.on(
+    'create_room',
+    ({
+      username,
+      max_rounds,
+      max_players,
+      timer,
+      password,
+      categories,
+      letters,
+    }) => {
+      const room_id = lobby.createRoom(
+        max_rounds,
+        max_players,
+        timer,
+        password,
+        categories,
+        letters
+      );
+      lobby.directEnterRoom(socket, room_id, username);
+    }
+  );
+
+  socket.on('stop', () => {
+    lobby.getRoom(socket['current_room_id']).stop(socket);
+  });
 });
 
 server.listen(PORT, () =>

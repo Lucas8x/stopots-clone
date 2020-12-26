@@ -1,3 +1,11 @@
+export const LETTERS = [...'abcdefghijklmnopqrstuvwxyz'];
+
+export enum TIME {
+  fast = 15000,
+  medium = 30000,
+  slow = 45000,
+}
+
 export const CATEGORIES = [
   'ADJETIVO',
   'ANIMAL',
@@ -64,5 +72,3 @@ export const CATEGORIES = [
   'VILÃO',
   'FLV',
 ];
-
-export const LETTERS = [...'abcdefghijklmnopqrstuvwxyz'];

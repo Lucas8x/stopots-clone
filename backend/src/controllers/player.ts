@@ -5,6 +5,7 @@ export default class Player {
   //id: string;
   username: string;
   avatar_id: number;
+  current_room: number;
   points: number;
   answers: string[];
 
@@ -17,14 +18,12 @@ export default class Player {
     this.answers = [];
   }
 
-  getInfo() {
-    return {
-      id: this.socket.id,
-      username: this.username,
-      avatar_id: this.avatar_id,
-      points: this.points,
-    };
-  }
+  public getInfo = () => ({
+    id: this.socket.id,
+    username: this.username,
+    avatar_id: this.avatar_id,
+    points: this.points,
+  });
 
   resetPoints() {
     this.points = 0;
