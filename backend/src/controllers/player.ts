@@ -1,22 +1,13 @@
 import { Socket } from 'socket.io';
 
 export default class Player {
-  socket: Socket;
-  //id: string;
-  username: string;
-  avatar_id: number;
-  current_room: number;
-  points: number;
-  answers: string[];
-
-  constructor(socket: Socket, username: string, avatar_id: number = 0) {
-    this.socket = socket;
-    //this.id = socket.id;
-    this.username = username;
-    this.avatar_id = avatar_id;
-    this.points = 0;
-    this.answers = [];
-  }
+  constructor(
+    public socket: Socket,
+    public username: string,
+    public avatar_id: number = 0,
+    public points: number = 0,
+    public answers: string[]
+  ) {}
 
   public getInfo = () => ({
     id: this.socket.id,

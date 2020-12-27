@@ -5,23 +5,18 @@ import Room from './room';
 //import randomArrItem from '../utils/randomArrayItem';
 import randomWithExclude from '../utils/randomWithExclude';
 
-interface Rooms {
+interface IRooms {
   [id: number]: Room;
 }
-export default class Lobby {
-  private rooms: Rooms;
-  private max_rooms: number;
 
-  constructor(max_rooms: number = 50) {
-    this.rooms = {};
-    this.max_rooms = max_rooms;
-  }
+export default class Lobby {
+  constructor(private max_rooms: number = 50, private rooms: IRooms = {}) {}
 
   public getRoom(id: number): Room {
     return this.rooms[id];
   }
 
-  public getAllRooms(): Rooms {
+  public getAllRooms(): IRooms {
     return this.rooms;
   }
 
@@ -43,7 +38,6 @@ export default class Lobby {
     }
 
     const id = randomWithExclude(0, this.max_rooms, this.usedRoomsID());
-
     this.rooms[id] = new Room(
       id,
       max_rounds,
@@ -53,11 +47,18 @@ export default class Lobby {
       categories,
       letters
     );
-    console.log(`> Created room: ${id}`);
+    console.log(`[LOBBY] Created room: ${id}`);
     return id;
   }
 
-  private getAvaliableRooms(): Rooms {
+  public deleteRoom(id: number) {
+    if (this.rooms[id]) {
+      console.log(`[LOBBY] Deleted room: ${id}`);
+      delete this.rooms[id];
+    }
+  }
+
+  private getAvaliableRooms(): IRooms {
     const avaliable_rooms = Object.values(this.rooms).map((room: Room) => {
       if (room.available()) {
         return room;
@@ -76,7 +77,7 @@ export default class Lobby {
     }
   }
 
-  public findSuitableRooms(): Rooms {
+  public findSuitableRooms(): IRooms {
     const avaliable_rooms = this.getAvaliableRooms();
     const sorted_rooms = Object.values(avaliable_rooms).sort(
       (a, b) => a.getInfo().players - b.getInfo().players
@@ -90,6 +91,6 @@ export default class Lobby {
   }
 
   public init(): void {
-    this.createRoom();
+    this.getRoom(this.createRoom()).init();
   }
 }

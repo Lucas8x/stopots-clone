@@ -9,24 +9,25 @@ const app = express();
 const server = http.createServer(app);
 const io = listen(server);
 
-const lobby = new Lobby(50);
+export const lobby = new Lobby(50);
 lobby.init();
 
 io.on('connection', (socket: Socket) => {
   console.log(`> New Connection: ${socket.id}`);
 
-  socket.on('enter_game', ({ username }) => {
+  socket.on('enter_game', ({ username }: IPlayerParams) => {
     console.log(`> Connecting: ${username} to a room...`);
     lobby.quickJoin(socket, username);
   });
 
-  socket.on('enter_with_id', ({ room_id, username }) => {
+  socket.on('enter_with_id', ({ room_id, username }: IDirectEnterParams) => {
     lobby.directEnterRoom(socket, room_id, username);
   });
 
   socket.on('disconnect', () => {
     console.log(`> Disconnection: ${socket.id}`);
-    lobby.getRoom(socket['current_room_id']).removePlayer(socket);
+    if (socket['current_room_id'])
+      lobby.getRoom(socket['current_room_id']).removePlayer(socket);
   });
 
   socket.on('chat_message', (message: string) => {
@@ -43,7 +44,7 @@ io.on('connection', (socket: Socket) => {
       password,
       categories,
       letters,
-    }) => {
+    }: IRoomParams) => {
       const room_id = lobby.createRoom(
         max_rounds,
         max_players,
@@ -64,3 +65,22 @@ io.on('connection', (socket: Socket) => {
 server.listen(PORT, () =>
   console.log(`> Server is listening on port ${PORT}.`)
 );
+
+interface IDirectEnterParams {
+  room_id: number;
+  username: string;
+}
+
+interface IPlayerParams {
+  username: string;
+}
+
+interface IRoomParams {
+  username: string;
+  max_rounds: number;
+  max_players: number;
+  timer: number;
+  password: string;
+  categories: string[];
+  letters: string[];
+}

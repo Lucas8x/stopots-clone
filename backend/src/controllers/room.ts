@@ -1,7 +1,8 @@
 import { Socket } from 'socket.io';
 
 import { CATEGORIES, LETTERS, TIME } from '../constants';
-import randItem from '../utils/randomArrayItem';
+//import randItem from '../utils/randomArrayItem';
+import { lobby } from '../server';
 import Player from './player';
 
 interface IAnswer {
@@ -13,39 +14,19 @@ interface IPlayers {
 }
 
 export default class Room {
-  public id: number;
-  public max_rounds: number;
-  public max_players: number;
-  private timer: TIME;
-  private password: string;
-  private categories: string[];
-  public letters: string[];
-  private current_letter: string;
-  public current_round: number;
-  private players: IPlayers;
-  //private answers: IAnswer[];
-
   constructor(
-    id: number,
-    max_rounds: number = 8,
-    max_players: number = 10,
-    timer: number = TIME.medium,
-    password: string = '',
-    categories: string[] = CATEGORIES,
-    letters: string[] = LETTERS
-  ) {
-    this.id = id;
-    this.max_rounds = max_rounds;
-    this.max_players = max_players;
-    this.timer = timer;
-    this.password = password;
-    this.categories = categories;
-    this.letters = letters;
-    this.current_letter = undefined;
-    this.current_round = 1;
-    this.players = {};
-    //this.answers = [];
-  }
+    public id: number,
+    public max_rounds: number = 8,
+    public max_players: number = 10,
+    private timer: number = TIME.medium,
+    private password: string = '',
+    private categories: string[] = CATEGORIES,
+    public letters: string[] = LETTERS,
+    private current_letter: string = undefined,
+    private current_round: number = 1,
+    private players: IPlayers = {},
+    private answers: IAnswer[] = []
+  ) {}
 
   public getInfo = () => ({
     id: this.id,
@@ -56,6 +37,7 @@ export default class Room {
     timer: this.timer,
     categories: this.categories,
     letters: this.letters,
+    protected: this.password ? true : false,
   });
 
   private returnState = () => ({
@@ -70,6 +52,9 @@ export default class Room {
   public available = () =>
     Object.keys(this.players).length === this.max_players ? false : true;
 
+  public validatePassword = (password: string) =>
+    password === this.password ? true : false;
+
   private emitToAll(event: string, data?: any) {
     Object.values(this.players).forEach((player) => {
       player.socket.emit(event, data);
@@ -82,17 +67,16 @@ export default class Room {
     }
 
     let player = new Player(socket, username);
-    player.current_room = this.id;
     socket['current_room_id'] = this.id;
     this.players[socket.id] = player;
     player.socket.emit('current_room_state', this.returnState());
-    console.log(`> ${player.username} entered room ${this.id}`);
+    console.log(`[ROOM][${this.id}] ${player.username} joined.`);
   }
 
   public removePlayer(socket: Socket) {
+    console.log(`[ROOM][${this.id}] ${this.players[socket.id].username} left.`);
     delete this.players[socket.id];
     delete socket['current_room_id'];
-    console.log(`> ${socket.id} left room ${this.id}`);
   }
 
   public sendMessage(message: string) {
@@ -103,15 +87,32 @@ export default class Room {
   public stop(socket: Socket) {
     const player_name = this.players[socket.id].username;
     this.emitToAll('stop', player_name);
+    console.log(`[ROOM][${this.id}] STOP! by ${player_name}.`);
   }
 
   private timeout() {
     this.emitToAll('timeout');
   }
 
-  public destroy() {}
+  public delete(game_loop: NodeJS.Timeout, inactivity_loop: NodeJS.Timeout) {
+    console.log(
+      `[ROOM][${this.id}] has been inactive for a long time. Deleting...`
+    );
+    clearInterval(game_loop);
+    clearInterval(inactivity_loop);
+    lobby.deleteRoom(this.id);
+  }
 
-  game_loop() {
-    setInterval(() => {}, this.timer);
+  public init() {
+    const game_loop = setInterval(() => {
+      console.log(`[ROOM][${this.id}] Timeout.`);
+      this.timeout();
+    }, this.timer);
+
+    const inactivity_loop = setInterval(() => {
+      if (Object.values(this.players).length === 0) {
+        this.delete(game_loop, inactivity_loop);
+      }
+    }, 120000); // 2m
   }
 }
