@@ -14,6 +14,11 @@ interface IPlayers {
 }
 
 export default class Room {
+  private current_letter: string = undefined;
+  private current_round: number = 1;
+  private players: IPlayers = {};
+  private answers: IAnswer[] = [];
+
   constructor(
     public id: number,
     public max_rounds: number = 8,
@@ -21,23 +26,28 @@ export default class Room {
     private timer: number = TIME.medium,
     private password: string = '',
     private categories: string[] = CATEGORIES,
-    public letters: string[] = LETTERS,
-    private current_letter: string = undefined,
-    private current_round: number = 1,
-    private players: IPlayers = {},
-    private answers: IAnswer[] = []
-  ) {}
+    public letters: string[] = LETTERS
+  ) {
+    this.current_letter = null;
+    this.current_round = 1;
+    this.players = {};
+    this.answers = [];
+  }
+
+  private playersLength() {
+    return Object.keys(this.players).length;
+  }
 
   public getInfo = () => ({
     id: this.id,
-    players: Object.keys(this.players).length,
+    players: this.playersLength(),
     max_players: this.max_players,
     current_round: this.current_round,
     max_rounds: this.max_rounds,
     timer: this.timer,
+    protected: this.password ? true : false,
     categories: this.categories,
     letters: this.letters,
-    protected: this.password ? true : false,
   });
 
   private returnState = () => ({
@@ -50,14 +60,14 @@ export default class Room {
   });
 
   public available = () =>
-    Object.keys(this.players).length === this.max_players ? false : true;
+    this.playersLength() === this.max_players ? false : true;
 
   public validatePassword = (password: string) =>
     password === this.password ? true : false;
 
-  private emitToAll(event: string, data?: any) {
+  private emitToAll(event: string, ...args: any[]) {
     Object.values(this.players).forEach((player) => {
-      player.socket.emit(event, data);
+      player.socket.emit(event, ...args);
     });
   }
 
@@ -74,9 +84,11 @@ export default class Room {
   }
 
   public removePlayer(socket: Socket) {
-    console.log(`[ROOM][${this.id}] ${this.players[socket.id].username} left.`);
+    const player = this.players[socket.id];
+    console.log(`[ROOM][${this.id}] ${player.username} left.`);
     delete this.players[socket.id];
     delete socket['current_room_id'];
+    this.emitToAll('player_disconnect', player.socket.id);
   }
 
   public sendMessage(message: string) {
@@ -95,9 +107,6 @@ export default class Room {
   }
 
   public delete(game_loop: NodeJS.Timeout, inactivity_loop: NodeJS.Timeout) {
-    console.log(
-      `[ROOM][${this.id}] has been inactive for a long time. Deleting...`
-    );
     clearInterval(game_loop);
     clearInterval(inactivity_loop);
     lobby.deleteRoom(this.id);
@@ -110,7 +119,10 @@ export default class Room {
     }, this.timer);
 
     const inactivity_loop = setInterval(() => {
-      if (Object.values(this.players).length === 0) {
+      if (this.playersLength() === 0) {
+        console.log(
+          `[ROOM][${this.id}] has been inactive for a long time. Deleting...`
+        );
         this.delete(game_loop, inactivity_loop);
       }
     }, 120000); // 2m

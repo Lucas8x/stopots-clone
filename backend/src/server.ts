@@ -16,7 +16,6 @@ io.on('connection', (socket: Socket) => {
   console.log(`> New Connection: ${socket.id}`);
 
   socket.on('enter_game', ({ username }: IPlayerParams) => {
-    console.log(`> Connecting: ${username} to a room...`);
     lobby.quickJoin(socket, username);
   });
 
@@ -25,7 +24,7 @@ io.on('connection', (socket: Socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`> Disconnection: ${socket.id}`);
+    console.log(`> Disconnected: ${socket.id}`);
     if (socket['current_room_id'])
       lobby.getRoom(socket['current_room_id']).removePlayer(socket);
   });

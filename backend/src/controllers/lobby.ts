@@ -10,7 +10,11 @@ interface IRooms {
 }
 
 export default class Lobby {
-  constructor(private max_rooms: number = 50, private rooms: IRooms = {}) {}
+  private rooms: IRooms;
+
+  constructor(private max_rooms: number = 50) {
+    this.rooms = {};
+  }
 
   public getRoom(id: number): Room {
     return this.rooms[id];
@@ -53,8 +57,8 @@ export default class Lobby {
 
   public deleteRoom(id: number) {
     if (this.rooms[id]) {
-      console.log(`[LOBBY] Deleted room: ${id}`);
       delete this.rooms[id];
+      console.log(`[LOBBY] Deleted room: ${id}`);
     }
   }
 
@@ -86,11 +90,16 @@ export default class Lobby {
   }
 
   public quickJoin(socket: Socket, username: string): void {
+    console.log(`[LOBBY] ${username} matchmaking...`);
     const suitable_rooms = this.findSuitableRooms();
-    this.directEnterRoom(socket, suitable_rooms[0].id, username);
+    Object.keys(suitable_rooms).length > 0
+      ? this.directEnterRoom(socket, suitable_rooms[0].id, username)
+      : this.directEnterRoom(socket, this.createRoom(), username);
   }
 
   public init(): void {
-    this.getRoom(this.createRoom()).init();
+    const room = this.getRoom(this.createRoom());
+    room.init();
+    console.log(room.getInfo());
   }
 }
