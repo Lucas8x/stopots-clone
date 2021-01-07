@@ -1,13 +1,10 @@
 import { Socket } from 'socket.io';
 
-import { CATEGORIES, LETTERS, TIME } from '../constants';
 import Room from './room';
+import { IPlayerParams, IRooms } from '../interfaces';
+import { CATEGORIES, LETTERS, TIME } from '../constants';
 //import randomArrItem from '../utils/randomArrayItem';
 import randomWithExclude from '../utils/randomWithExclude';
-
-interface IRooms {
-  [id: number]: Room;
-}
 
 export default class Lobby {
   private rooms: IRooms;
@@ -33,15 +30,16 @@ export default class Lobby {
     max_rounds: number = 8,
     max_players: number = 10,
     timer: number = TIME.medium,
-    password: string = '',
+    password: string = null,
     categories: string[] = CATEGORIES,
-    letters: string[] = LETTERS
+    letters: string[] = LETTERS,
+    owner: string = null
   ): number {
     if (Object.keys(this.rooms).length === this.max_rooms) {
-      return null;
+      return;
     }
 
-    const id = randomWithExclude(0, this.max_rooms, this.usedRoomsID());
+    const id = randomWithExclude(1, this.max_rooms, this.usedRoomsID());
     this.rooms[id] = new Room(
       id,
       max_rounds,
@@ -49,13 +47,14 @@ export default class Lobby {
       timer,
       password,
       categories,
-      letters
+      letters,
+      owner
     );
     console.log(`[LOBBY] Created room: ${id}`);
     return id;
   }
 
-  public deleteRoom(id: number) {
+  public deleteRoom(id: number): void {
     if (this.rooms[id]) {
       delete this.rooms[id];
       console.log(`[LOBBY] Deleted room: ${id}`);
@@ -71,16 +70,6 @@ export default class Lobby {
     return avaliable_rooms;
   }
 
-  public directEnterRoom(
-    socket: Socket,
-    room_id: number,
-    username: string
-  ): void {
-    if (this.rooms[room_id]) {
-      this.rooms[room_id].addPlayer(socket, username);
-    }
-  }
-
   public findSuitableRooms(): IRooms {
     const avaliable_rooms = this.getAvaliableRooms();
     const sorted_rooms = Object.values(avaliable_rooms).sort(
@@ -89,17 +78,32 @@ export default class Lobby {
     return sorted_rooms;
   }
 
-  public quickJoin(socket: Socket, username: string): void {
-    console.log(`[LOBBY] ${username} matchmaking...`);
+  public directEnterRoom(
+    socket: Socket,
+    room_id: number,
+    player_data: IPlayerParams
+  ): void {
+    const room = this.rooms[room_id];
+    if (room.available()) {
+      room.addPlayer(socket, player_data);
+    }
+  }
+
+  public quickJoin(socket: Socket, player_data: IPlayerParams): void {
+    console.log(`[LOBBY] ${player_data.username} matchmaking...`);
     const suitable_rooms = this.findSuitableRooms();
-    Object.keys(suitable_rooms).length > 0
-      ? this.directEnterRoom(socket, suitable_rooms[0].id, username)
-      : this.directEnterRoom(socket, this.createRoom(), username);
+
+    const room_id =
+      Object.keys(suitable_rooms).length > 0
+        ? suitable_rooms[0].id
+        : this.createRoom();
+
+    this.directEnterRoom(socket, room_id, player_data);
   }
 
   public init(): void {
     const room = this.getRoom(this.createRoom());
     room.init();
-    console.log(room.getInfo());
+    //console.log(room.getInfo());
   }
 }
