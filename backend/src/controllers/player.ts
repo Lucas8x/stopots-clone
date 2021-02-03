@@ -3,6 +3,7 @@ import { Socket } from 'socket.io';
 export default class Player {
   public points: number;
   public answers: string[];
+  public ready: boolean;
 
   constructor(
     public socket: Socket,
@@ -11,6 +12,7 @@ export default class Player {
   ) {
     this.points = 0;
     this.answers = [];
+    this.ready = false;
   }
 
   public getInfo = () => ({
@@ -26,5 +28,9 @@ export default class Player {
 
   public increasePoints(x: number) {
     this.points += x;
+  }
+
+  public switchReady() {
+    this.ready = !this.ready;
   }
 }

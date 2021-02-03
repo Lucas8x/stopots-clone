@@ -20,6 +20,11 @@ export interface IRoomParams {
   letters: string[];
 }
 
+export interface IRoom extends Partial<IRoomParams> {
+  owner?: string;
+  expires?: number;
+}
+
 export interface ICreateRoomParams {
   room_params: IRoomParams;
   player_data: IPlayerParams;

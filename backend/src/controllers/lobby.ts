@@ -1,7 +1,8 @@
 import { Socket } from 'socket.io';
+import chalk from 'chalk';
 
 import Room from './room';
-import { IPlayerParams, IRooms } from '../interfaces';
+import { IPlayerParams, IRooms, IRoom } from '../interfaces';
 import { CATEGORIES, LETTERS, TIME } from '../constants';
 //import randomArrItem from '../utils/randomArrayItem';
 import randomWithExclude from '../utils/randomWithExclude';
@@ -26,15 +27,16 @@ export default class Lobby {
     return used_ids;
   }
 
-  public createRoom(
-    max_rounds: number = 8,
-    max_players: number = 10,
-    timer: number = TIME.medium,
-    password: string = null,
-    categories: string[] = CATEGORIES,
-    letters: string[] = LETTERS,
-    owner: string = null
-  ): number {
+  public createRoom({
+    max_rounds = 8,
+    max_players = 10,
+    timer = TIME.medium,
+    password = null,
+    categories = CATEGORIES,
+    letters = LETTERS,
+    owner = null,
+    expires = 120000,
+  }: IRoom = {}): number {
     if (Object.keys(this.rooms).length === this.max_rooms) {
       return;
     }
@@ -48,16 +50,17 @@ export default class Lobby {
       password,
       categories,
       letters,
-      owner
+      owner,
+      expires
     );
-    console.log(`[LOBBY] Created room: ${id}`);
+    console.log(chalk`[{yellow LOBBY}] Created room: ${id}`);
     return id;
   }
 
   public deleteRoom(id: number): void {
-    if (this.rooms[id]) {
+    if (this.getRoom(id)) {
       delete this.rooms[id];
-      console.log(`[LOBBY] Deleted room: ${id}`);
+      console.log(chalk`[{yellow LOBBY}] Deleted room: ${id}`);
     }
   }
 
@@ -83,14 +86,14 @@ export default class Lobby {
     room_id: number,
     player_data: IPlayerParams
   ): void {
-    const room = this.rooms[room_id];
-    if (room.available()) {
+    const room = this.getRoom(room_id);
+    if (room?.available()) {
       room.addPlayer(socket, player_data);
     }
   }
 
   public quickJoin(socket: Socket, player_data: IPlayerParams): void {
-    console.log(`[LOBBY] ${player_data.username} matchmaking...`);
+    console.log(chalk`[{yellow LOBBY}] ${player_data.username} matchmaking...`);
     const suitable_rooms = this.findSuitableRooms();
 
     const room_id =
@@ -101,9 +104,8 @@ export default class Lobby {
     this.directEnterRoom(socket, room_id, player_data);
   }
 
-  public init(): void {
-    const room = this.getRoom(this.createRoom());
-    room.init();
-    //console.log(room.getInfo());
+  public disconnect(socket: Socket): void {
+    const room_id = socket['current_room_id'];
+    if (room_id) this.getRoom(room_id).removePlayer(socket);
   }
 }
