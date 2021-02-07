@@ -1,8 +1,10 @@
 import { Socket } from 'socket.io';
 
+import { IPlayerAnswers } from '../interfaces';
+
 export default class Player {
   public points: number;
-  public answers: string[];
+  public answers: IPlayerAnswers;
   public ready: boolean;
 
   constructor(
@@ -11,7 +13,7 @@ export default class Player {
     public avatar_id: number = 0
   ) {
     this.points = 0;
-    this.answers = [];
+    this.answers = {};
     this.ready = false;
   }
 

@@ -9,8 +9,9 @@ export default function randomWithExclude(
     randomNumber +
     excludeArray
       .sort((a, b) => a - b)
-      .reduce((acc, element) => {
-        return randomNumber >= element - acc ? acc + 1 : acc;
-      }, 0)
+      .reduce(
+        (acc, element) => (randomNumber >= element - acc ? acc + 1 : acc),
+        0
+      )
   );
 }

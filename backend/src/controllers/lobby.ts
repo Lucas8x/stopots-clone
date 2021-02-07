@@ -14,18 +14,12 @@ export default class Lobby {
     this.rooms = {};
   }
 
-  public getRoom(id: number): Room {
-    return this.rooms[id];
-  }
+  public getRoom = (id: number): Room => this.rooms[id];
 
-  public getAllRooms(): IRooms {
-    return this.rooms;
-  }
+  public getAllRooms = (): IRooms => this.rooms;
 
-  private usedRoomsID(): number[] {
-    const used_ids = Object.keys(this.rooms).map((id) => parseInt(id));
-    return used_ids;
-  }
+  private usedRoomsIds = (): number[] =>
+    Object.keys(this.rooms).map((id) => parseInt(id, 10));
 
   public createRoom({
     max_rounds = 8,
@@ -36,12 +30,12 @@ export default class Lobby {
     letters = LETTERS,
     owner = null,
     expires = 120000,
-  }: IRoom = {}): number {
+  }: IRoom = {}): number | null {
     if (Object.keys(this.rooms).length === this.max_rooms) {
-      return;
+      return null;
     }
 
-    const id = randomWithExclude(1, this.max_rooms, this.usedRoomsID());
+    const id = randomWithExclude(1, this.max_rooms, this.usedRoomsIds());
     this.rooms[id] = new Room(
       id,
       max_rounds,
@@ -58,20 +52,16 @@ export default class Lobby {
   }
 
   public deleteRoom(id: number): void {
-    if (this.getRoom(id)) {
-      delete this.rooms[id];
-      console.log(chalk`[{yellow LOBBY}] Deleted room: ${id}`);
-    }
+    if (!this.getRoom(id)) return;
+
+    delete this.rooms[id];
+    console.log(chalk`[{yellow LOBBY}] Deleted room: ${id}`);
   }
 
-  private getAvaliableRooms(): IRooms {
-    const avaliable_rooms = Object.values(this.rooms).map((room: Room) => {
-      if (room.available()) {
-        return room;
-      }
-    });
-    return avaliable_rooms;
-  }
+  private getAvaliableRooms = (): IRooms =>
+    Object.values(this.rooms).map((room: Room) =>
+      room.available() ? room : null
+    );
 
   public findSuitableRooms(): IRooms {
     const avaliable_rooms = this.getAvaliableRooms();
@@ -87,7 +77,7 @@ export default class Lobby {
     player_data: IPlayerParams
   ): void {
     const room = this.getRoom(room_id);
-    if (room?.available()) {
+    if (room.available()) {
       room.addPlayer(socket, player_data);
     }
   }

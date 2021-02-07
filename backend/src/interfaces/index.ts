@@ -34,8 +34,8 @@ export interface IRooms {
   [id: number]: Room;
 }
 
-export interface IAnswer {
-  category: string[];
+export interface IPlayerAnswers {
+  [category: string]: string;
 }
 
 export interface IPlayers {

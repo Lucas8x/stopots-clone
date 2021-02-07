@@ -4,14 +4,14 @@ import chalk from 'chalk';
 import Player from './player';
 import { lobby } from '../server';
 import { CATEGORIES, LETTERS, TIME } from '../constants';
-import { IAnswer, IPlayerParams, IPlayers, IRoom } from '../interfaces';
+import { IPlayerParams, IPlayers, IRoom } from '../interfaces';
 //import randItem from '../utils/randomArrayItem';
 
 export default class Room {
-  private current_letter: string = undefined;
-  private current_round: number = 1;
-  private players: IPlayers = {};
-  private answers: IAnswer[] = [];
+  private current_letter: string;
+  private current_round: number;
+  private players: IPlayers;
+  private answers: string[];
 
   constructor(
     public id: number,
@@ -24,10 +24,10 @@ export default class Room {
     public owner: string = null,
     private expires: number = 120000
   ) {
-    this.current_letter;
-    this.current_round;
-    this.players;
-    this.answers;
+    this.current_letter = undefined;
+    this.current_round = 1;
+    this.players = {};
+    this.answers = [];
   }
 
   private playersLength = (): number => Object.keys(this.players).length;
@@ -39,7 +39,7 @@ export default class Room {
     current_round: this.current_round,
     max_rounds: this.max_rounds,
     timer: this.timer,
-    protected: this.password ? true : false,
+    protected: !!this.password,
     categories: this.categories,
     letters: this.letters,
   });
@@ -55,7 +55,7 @@ export default class Room {
   public available = (): boolean => this.playersLength() < this.max_players;
 
   public validatePassword = (password: string): boolean =>
-    password === this.password ? true : false;
+    password === this.password;
 
   private emitToAll(event: string, ...args: any[]): void {
     Object.values(this.players).forEach((player) => {
@@ -110,31 +110,42 @@ export default class Room {
 
   private timeout(): void {
     this.emitToAll('timeout');
+    console.log(chalk`[{cyan ROOM}][{cyan ${this.id}}] Timeout.`);
   }
 
   public delete(
     game_loop: NodeJS.Timeout,
     inactivity_loop: NodeJS.Timeout
   ): void {
+    console.log(
+      chalk`[{cyan ROOM}][{cyan ${this.id}}] has been inactive for a long time. Deleting...`
+    );
     clearInterval(game_loop);
     clearInterval(inactivity_loop);
     lobby.deleteRoom(this.id);
+  }
+
+  public restart() {
+    this.current_round = 1;
+    Object.values(this.players).forEach((player) => {
+      player.resetPoints();
+    });
+    this.emitToAll('restart', {
+      current_round: this.current_round,
+      players: Object.values(this.players).map((p) => p.getInfo()),
+    });
   }
 
   public init(): void {
     const game_loop = setInterval(() => {
       if (this.playersLength() === 0) return;
 
-      console.log(chalk`[{cyan ROOM}][{cyan ${this.id}}] Timeout.`);
       this.timeout();
     }, this.timer);
 
     if (this.expires > 0) {
       const inactivity_loop = setInterval(() => {
         if (this.playersLength() === 0) {
-          console.log(
-            chalk`[{cyan ROOM}][{cyan ${this.id}}] has been inactive for a long time. Deleting...`
-          );
           this.delete(game_loop, inactivity_loop);
         }
       }, this.expires);

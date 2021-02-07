@@ -8,7 +8,7 @@ import {
   IPlayerParams,
 } from './interfaces';
 
-const PORT = parseInt(process.env.PORT) || 3333;
+const PORT = parseInt(process.env.PORT, 10) || 3333;
 const io = new Server(PORT, {
   allowEIO3: true,
 });
