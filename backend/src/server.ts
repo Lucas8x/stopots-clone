@@ -11,6 +11,10 @@ import {
 const PORT = parseInt(process.env.PORT, 10) || 3333;
 const io = new Server(PORT, {
   allowEIO3: true,
+  cors: {
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+  },
 });
 console.log(chalk`[{magenta SERVER}] listening on port ${PORT}.`);
 
